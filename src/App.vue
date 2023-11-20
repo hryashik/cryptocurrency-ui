@@ -3,7 +3,7 @@ export default {};
 </script>
 
 <template>
-   <div class="p-2">
+   <div class="px-8 py-4">
       <div class="w-82 mb-6">
          <form @submit.prevent="" class="flex flex-col items-start">
             <label for="ticker-input">Тикер</label>
@@ -19,6 +19,39 @@ export default {};
             />
          </form>
       </div>
+      <hr class="bg-rose-600" />
+      <div class="mb-4 mt-4 grid grid-cols-1 gap-2 sm:grid-cols-5">
+         <div
+            class="active-coin flex flex-col items-center rounded-md p-4 hover:cursor-pointer"
+         >
+            <p class="text-gray-400">WTF - USD</p>
+            <h3 class="mb-4 text-2xl mt-2">1.11</h3>
+            <button
+               class="flex rounded-lg px-4 py-2 transition-colors hover:bg-gray-200"
+            >
+               <img src="assets/delete-icon.png" class="w-5" alt="" />
+               Удалить
+            </button>
+         </div>
+         <div
+            class="flex flex-col items-center rounded-md p-4 hover:cursor-pointer"
+         >
+            <p class="text-gray-400">WTF - USD</p>
+            <h3 class="mb-4 text-2xl mt-2">1.11</h3>
+            <button
+               class="flex rounded-lg px-4 py-2 transition-colors hover:bg-gray-200"
+            >
+               <img src="assets/delete-icon.png" class="w-5" alt="" />
+               Удалить
+            </button>
+         </div>
+      </div>
       <hr />
    </div>
 </template>
+
+<style scoped>
+.active-coin {
+   border: 3px solid rgb(95, 43, 226);
+}
+</style>
