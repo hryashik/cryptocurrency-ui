@@ -4,31 +4,52 @@ export default {
    data() {
       return {
          ticker: "",
-         tickers: [
-            { name: "DEMO1", price: "-" },
-            { name: "DEMO2", price: "-" },
-            { name: "DEMO3", price: "-" },
-            { name: "DEMO4", price: "-" },
-            { name: "DEMO5", price: "-" },
-         ],
+         tickers: [] as TickerType[],
          sel: null as null | TickerType,
+         graph: [] as number[],
       };
    },
    methods: {
       addTicker() {
          if (this.ticker.length) {
-            const newTicker = {
+            const currentTicker = {
                name: this.ticker,
                price: "-",
             };
+            const apiKey = import.meta.env.VITE_API_KEY;
+            setInterval(async () => {
+               const f = await fetch(
+                  `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=${apiKey}`,
+               );
+               const data = await f.json();
+               const findTicker = this.tickers.find(
+                  (t) => t.name === currentTicker.name,
+               )!;
+               const price =
+                  data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+               findTicker.price = price;
+
+               if (this.sel?.name === currentTicker.name) {
+                  this.graph.push(data.USD);
+               }
+            }, 3000);
             this.ticker = "";
-            this.tickers.push(newTicker);
+            this.tickers.push(currentTicker);
          }
       },
       handlerDelete(tickerToRemove: TickerType) {
          this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
          if (this.sel === tickerToRemove) this.sel = null;
       },
+      normalizeGraph() {
+         const maxValue = Math.max(...this.graph);
+         const minValue = Math.min(...this.graph);
+         return this.graph.map(price => 5 + ((price - minValue) * 95 / (maxValue - minValue)))
+      },
+      select(t: TickerType) {
+         this.sel = t;
+         this.graph = [];
+      }
    },
 };
 </script>
@@ -61,7 +82,7 @@ export default {
             <div
                v-for="(t, idx) in tickers"
                :key="idx"
-               @click="sel = t"
+               @click="select(t)"
                :class="{ 'border-4': t === sel }"
                class="flex flex-col items-center rounded-md border-purple-800 p-4 hover:cursor-pointer"
             >
@@ -69,10 +90,10 @@ export default {
                <h3 class="mb-4 mt-2 text-xl">{{ t.price }}</h3>
                <button
                   @click.stop="() => handlerDelete(t)"
-                  class="flex rounded-lg px-4 py-2 transition-colors hover:bg-gray-200"
+                  class="flex justify-center rounded-lg px-4 py-2 transition-colors hover:bg-gray-200"
                >
                   <img src="assets/delete-icon.png" class="w-5" alt="" />
-                  Удалить
+                  <p>Удалить</p>
                </button>
             </div>
          </div>
@@ -87,10 +108,12 @@ export default {
                   <div
                      class="flex h-64 items-end border-b border-l border-gray-600"
                   >
-                     <div class="h-24 w-10 border bg-purple-800"></div>
-                     <div class="h-32 w-10 border bg-purple-800"></div>
-                     <div class="h-48 w-10 border bg-purple-800"></div>
-                     <div class="h-16 w-10 border bg-purple-800"></div>
+                     <div
+                        v-for="(bar, idx) in normalizeGraph()"
+                        :style="{height: `${bar}%`}"
+                        :key="idx"
+                        class="w-10 border bg-purple-800"
+                     ></div>
                   </div>
                   <button
                      @click="sel = null"
