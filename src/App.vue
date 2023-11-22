@@ -10,7 +10,15 @@ export default {
          graph: [] as number[],
          coins: undefined as undefined | FetchCoinApiResponse["Data"],
          validateErr: false,
+         filter: "",
+         page: 1,
+         hasNextPage: false,
       };
+   },
+   watch: {
+      filter() {
+         this.page = 1;
+      }
    },
    methods: {
       subscribeToUpdateTicker(tickerName: string) {
@@ -51,11 +59,16 @@ export default {
             this.subscribeToUpdateTicker(currentTicker.name);
 
             this.ticker = "";
+            this.filter = "";
          }
       },
       handlerDelete(tickerToRemove: TickerType) {
          this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
          if (this.sel === tickerToRemove) this.sel = null;
+         localStorage.setItem(
+            "cryptonomicon-list",
+            JSON.stringify(this.tickers),
+         );
       },
       normalizeGraph() {
          const maxValue = Math.max(...this.graph);
@@ -86,6 +99,16 @@ export default {
             }
          }
          return validate;
+      },
+      filteredTickers() {
+         const start = (this.page - 1) * 5;
+         const end = this.page * 5;
+         const filteredTickers = this.tickers
+            .filter((t) =>
+               t.name.toLowerCase().includes(this.filter.toLowerCase()),
+            )
+         this.hasNextPage = filteredTickers.length > end;
+         return filteredTickers.slice(start, end);
       },
    },
    async beforeMount() {
@@ -167,11 +190,39 @@ export default {
       </div>
       <!-- BODY -->
       <template v-if="tickers.length">
-         <hr class="bg-rose-600" />
+         <div class="mb-4">
+            <input
+               v-model="filter"
+               class="rounded-md border-2 px-2 py-1 shadow-md"
+               type="text"
+               placeholder="Фильтр"
+            />
+            <div class="mt-3 flex items-center">
+               <button
+                  v-if="page > 1"
+                  @click="page = page - 1"
+                  class="rounded-full bg-gray-400 px-3 py-1 text-white transition-colors hover:bg-gray-500"
+               >
+                  Назад
+               </button>
+               <span
+                  class="ml-2 mr-2 rounded-full border-2 border-gray-400 px-2 text-center"
+                  >{{ page }}</span
+               >
+               <button
+                  v-if="hasNextPage"
+                  @click="page = page + 1"
+                  class="rounded-full bg-gray-400 px-3 py-1 text-white transition-colors hover:bg-gray-500"
+               >
+                  Вперед
+               </button>
+            </div>
+         </div>
+         <hr class="border-t border-gray-700" />
          <!-- COINS -->
          <div class="mb-4 mt-4 grid grid-cols-1 gap-2 sm:grid-cols-5">
             <div
-               v-for="(t, idx) in tickers"
+               v-for="(t, idx) in filteredTickers()"
                :key="idx"
                @click="select(t)"
                :class="{ 'border-4': t === sel }"
@@ -190,7 +241,7 @@ export default {
          </div>
          <!-- GRAPHIC -->
          <template v-if="sel">
-            <hr />
+            <hr class="border-t border-gray-700" />
             <div>
                <section class="relative">
                   <h3 class="my-8 text-lg font-medium leading-6 text-gray-900">
