@@ -1,4 +1,5 @@
 <script lang="ts">
+import { FetchCoinApiResponse } from "./types/fetchCoinResponse.type";
 import { TickerType } from "./types/ticker.type";
 export default {
    data() {
@@ -7,11 +8,17 @@ export default {
          tickers: [] as TickerType[],
          sel: null as null | TickerType,
          graph: [] as number[],
+         coins: undefined as undefined | FetchCoinApiResponse["Data"],
+         validateErr: false,
       };
    },
    methods: {
       addTicker() {
          if (this.ticker.length) {
+            if (!this.validateTicker()) {
+               this.validateErr = true;
+               return;
+            }
             const currentTicker = {
                name: this.ticker,
                price: "-",
@@ -44,12 +51,41 @@ export default {
       normalizeGraph() {
          const maxValue = Math.max(...this.graph);
          const minValue = Math.min(...this.graph);
-         return this.graph.map(price => 5 + ((price - minValue) * 95 / (maxValue - minValue)))
+         return this.graph.map(
+            (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
+         );
       },
       select(t: TickerType) {
          this.sel = t;
          this.graph = [];
+         console.log(this.validateTicker());
+      },
+      async fetchCoins() {
+         const f = await fetch(
+            "https://min-api.cryptocompare.com/data/all/coinlist?summary=true",
+         );
+         const coins: FetchCoinApiResponse = await f.json();
+         return coins;
+      },
+      validateTicker() {
+         let validate = true;
+         for (let t of this.tickers) {
+            if (
+               this.ticker &&
+               t.name.toLowerCase().includes(this.ticker.toLowerCase())
+            ) {
+               validate = false;
+            }
+         }
+         return validate;
+      },
+      findCompleteTickers() {
+         if (!this.coins) return;
       }
+    },
+   async beforeMount() {
+      const response = await this.fetchCoins();
+      this.coins = response.Data;
    },
 };
 </script>
@@ -60,17 +96,31 @@ export default {
       <div class="w-82 mb-6">
          <form @submit.prevent="addTicker" class="flex flex-col items-start">
             <label for="ticker-input">Тикер</label>
-            <input
-               v-model="ticker"
-               id="ticker-input"
-               type="text"
-               placeholder="Например DOGE"
-               class="mb-4 mt-3 w-64 rounded-md border-b-2 border-indigo-300 border-opacity-0 px-2 shadow-xl focus:border-b-2 focus:border-opacity-100 focus:outline-none"
-            />
+            <div>
+               <input
+                  v-model="ticker"
+                  @input="validateErr = false"
+                  id="ticker-input"
+                  type="text"
+                  placeholder="Например DOGE"
+                  class="mb-2 mt-3 w-64 rounded-md border-b-2 border-indigo-300 border-opacity-0 px-2 shadow-xl focus:border-b-2 focus:border-opacity-100 focus:outline-none"
+               />
+               <div class="grid grid-cols-4 justify-items-center">
+                  <div
+                     class="rounded-full bg-gray-500 px-3 py-1 text-sm text-white hover:cursor-pointer"
+                  >
+                     BTC
+                  </div>
+               </div>
+            </div>
+
+            <p v-if="validateErr" class="mb-2 text-rose-500">
+               Такой тикер уже добавлен
+            </p>
             <input
                type="submit"
                value="+  Добавить"
-               class="rounded-full bg-gray-500 px-4 py-2 text-white hover:cursor-pointer active:bg-gray-600"
+               class="mt-2 rounded-full bg-gray-500 px-4 py-2 text-white hover:cursor-pointer active:bg-gray-600"
             />
          </form>
       </div>
@@ -110,7 +160,7 @@ export default {
                   >
                      <div
                         v-for="(bar, idx) in normalizeGraph()"
-                        :style="{height: `${bar}%`}"
+                        :style="{ height: `${bar}%` }"
                         :key="idx"
                         class="w-10 border bg-purple-800"
                      ></div>
