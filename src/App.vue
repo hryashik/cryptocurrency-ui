@@ -6,7 +6,7 @@ export default {
       return {
          ticker: "",
          tickers: [] as TickerType[],
-         sel: null as null | TickerType,
+         selectedTicker: null as null | TickerType,
          graph: [] as number[],
          coins: undefined as undefined | FetchCoinApiResponse["Data"],
          validateErr: false,
@@ -58,21 +58,36 @@ export default {
             (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
          );
       },
+      pageStateOptions() {
+         return {
+            filter: this.filter,
+            page: this.page,
+         };
+      },
    },
    watch: {
-      filter() {
-         this.page = 1;
-         history.pushState(
-            "",
-            document.title,
-            `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
+      tickers() {
+         localStorage.setItem(
+            "cryptonomicon-list",
+            JSON.stringify(this.tickers),
          );
       },
-      page() {
-         history.pushState(
+      selectedTicker() {
+         this.graph = [];
+      },
+      paginatedTickers() {
+         if (this.paginatedTickers.length === 0 && this.page > 1) {
+            this.page -= 1;
+         }
+      },
+      filter() {
+         this.page = 1;
+      },
+      pageStateOptions(value) {
+         window.history.pushState(
             "",
             document.title,
-            `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
+            `${window.location.pathname}?filter=${value.filter}&page=${value.page}`,
          );
       },
    },
@@ -111,7 +126,7 @@ export default {
                data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
             findTicker.price = price;
 
-            if (this.sel?.name === tickerName) {
+            if (this.selectedTicker?.name === tickerName) {
                this.graph.push(data.USD);
             }
          }, 3000);
@@ -127,13 +142,7 @@ export default {
                price: "-",
             };
 
-            this.tickers.push(currentTicker);
-
-            localStorage.setItem(
-               "cryptonomicon-list",
-               JSON.stringify(this.tickers),
-            );
-
+            this.tickers = [...this.tickers, currentTicker];
             this.subscribeToUpdateTicker(currentTicker.name);
 
             this.ticker = "";
@@ -142,15 +151,10 @@ export default {
       },
       handlerDelete(tickerToRemove: TickerType) {
          this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
-         if (this.sel === tickerToRemove) this.sel = null;
-         localStorage.setItem(
-            "cryptonomicon-list",
-            JSON.stringify(this.tickers),
-         );
+         if (this.selectedTicker === tickerToRemove) this.selectedTicker = null;
       },
       select(t: TickerType) {
-         this.sel = t;
-         this.graph = [];
+         this.selectedTicker = t;
       },
       async fetchCoins() {
          const f = await fetch(
@@ -255,7 +259,7 @@ export default {
             <div
                v-for="(t, idx) in paginatedTickers"
                :key="idx"
-               :class="{ 'border-4': t === sel }"
+               :class="{ 'border-4': t === selectedTicker }"
                class="flex flex-col items-center rounded-md border-purple-800 p-4 hover:cursor-pointer"
                @click="select(t)"
             >
@@ -271,12 +275,12 @@ export default {
             </div>
          </div>
          <!-- GRAPHIC -->
-         <template v-if="sel">
+         <template v-if="selectedTicker">
             <hr class="border-t border-gray-700" />
             <div>
                <section class="relative">
                   <h3 class="my-8 text-lg font-medium leading-6 text-gray-900">
-                     {{ sel.name }}
+                     {{ selectedTicker.name }}
                   </h3>
                   <div
                      class="flex h-64 items-end border-b border-l border-gray-600"
@@ -291,7 +295,7 @@ export default {
                   <button
                      type="button"
                      class="absolute right-0 top-0"
-                     @click="sel = null"
+                     @click="selectedTicker = null"
                   >
                      <svg
                         xmlns="http://www.w3.org/2000/svg"
