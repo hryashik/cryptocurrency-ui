@@ -18,7 +18,19 @@ export default {
    watch: {
       filter() {
          this.page = 1;
-      }
+         history.pushState(
+            "",
+            document.title,
+            `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
+         );
+      },
+      page() {
+         history.pushState(
+            "",
+            document.title,
+            `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
+         );
+      },
    },
    methods: {
       subscribeToUpdateTicker(tickerName: string) {
@@ -103,10 +115,9 @@ export default {
       filteredTickers() {
          const start = (this.page - 1) * 5;
          const end = this.page * 5;
-         const filteredTickers = this.tickers
-            .filter((t) =>
-               t.name.toLowerCase().includes(this.filter.toLowerCase()),
-            )
+         const filteredTickers = this.tickers.filter((t) =>
+            t.name.toLowerCase().includes(this.filter.toLowerCase()),
+         );
          this.hasNextPage = filteredTickers.length > end;
          return filteredTickers.slice(start, end);
       },
@@ -116,6 +127,16 @@ export default {
       this.coins = response.Data;
    },
    created() {
+      const windowData = Object.fromEntries(
+         new URL(window.location.href).searchParams.entries(),
+      );
+      if (windowData.page) {
+         this.page = +windowData.page;
+      }
+      if (windowData.filter) {
+         this.filter = windowData.filter;
+      }
+
       const data = localStorage.getItem("cryptonomicon-list");
       if (data) {
          const tickers: TickerType[] = JSON.parse(data);
