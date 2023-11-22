@@ -13,14 +13,14 @@ export default {
       };
    },
    methods: {
-      addTicker() {
-         if (this.ticker.length) {
-            if (!this.validateTicker()) {
+      addTicker(tickerName: string) {
+         if (tickerName) {
+            if (!this.validateTicker(tickerName)) {
                this.validateErr = true;
                return;
             }
             const currentTicker = {
-               name: this.ticker,
+               name: tickerName.toUpperCase(),
                price: "-",
             };
             const apiKey = import.meta.env.VITE_API_KEY;
@@ -58,7 +58,6 @@ export default {
       select(t: TickerType) {
          this.sel = t;
          this.graph = [];
-         console.log(this.validateTicker());
       },
       async fetchCoins() {
          const f = await fetch(
@@ -67,25 +66,39 @@ export default {
          const coins: FetchCoinApiResponse = await f.json();
          return coins;
       },
-      validateTicker() {
+      validateTicker(tickerName: string) {
          let validate = true;
          for (let t of this.tickers) {
             if (
                this.ticker &&
-               t.name.toLowerCase().includes(this.ticker.toLowerCase())
+               t.name.toLowerCase().includes(tickerName.toLowerCase())
             ) {
                validate = false;
             }
          }
          return validate;
       },
-      findCompleteTickers() {
-         if (!this.coins) return;
-      }
-    },
+   },
    async beforeMount() {
       const response = await this.fetchCoins();
       this.coins = response.Data;
+   },
+   computed: {
+      findCompleteTickers() {
+         if (!this.coins) return;
+         const arr: string[] = [];
+         for (let key in this.coins) {
+            if (arr.length === 4) break;
+            const fullName = this.coins[key].FullName.toLowerCase();
+            if (
+               fullName.includes(this.ticker.toLowerCase()) &&
+               this.validateTicker(key)
+            ) {
+               arr.push(key);
+            }
+         }
+         return arr;
+      },
    },
 };
 </script>
@@ -94,27 +107,35 @@ export default {
    <div class="px-8 py-4">
       <!-- TICKER INPUT -->
       <div class="w-82 mb-6">
-         <form @submit.prevent="addTicker" class="flex flex-col items-start">
+         <form @submit.prevent="addTicker(ticker)" class="flex flex-col items-start">
             <label for="ticker-input">Тикер</label>
-            <div>
+            <div class="w-64">
                <input
                   v-model="ticker"
                   @input="validateErr = false"
                   id="ticker-input"
                   type="text"
                   placeholder="Например DOGE"
-                  class="mb-2 mt-3 w-64 rounded-md border-b-2 border-indigo-300 border-opacity-0 px-2 shadow-xl focus:border-b-2 focus:border-opacity-100 focus:outline-none"
+                  class="mb-2 mt-3 w-full rounded-md border-b-2 border-indigo-300 border-opacity-0 px-2 shadow-xl focus:border-b-2 focus:border-opacity-100 focus:outline-none"
                />
-               <div class="grid grid-cols-4 justify-items-center">
+               <div
+                  v-if="ticker.length"
+                  class="grid grid-cols-4 justify-items-center gap-1"
+               >
                   <div
-                     class="rounded-full bg-gray-500 px-3 py-1 text-sm text-white hover:cursor-pointer"
+                     v-for="h of findCompleteTickers"
+                     @click="addTicker(h)"
+                     :key="h"
+                     class="flex w-full justify-center rounded-full bg-gray-400 px-1 py-1 text-sm text-white hover:cursor-pointer"
                   >
-                     BTC
+                     <p class="overflow-hidden">
+                        {{ h }}
+                     </p>
                   </div>
                </div>
             </div>
 
-            <p v-if="validateErr" class="mb-2 text-rose-500">
+            <p v-if="validateErr" class="text-rose-500">
                Такой тикер уже добавлен
             </p>
             <input
