@@ -12,8 +12,39 @@ export default {
          validateErr: false,
          filter: "",
          page: 1,
-         hasNextPage: false,
       };
+   },
+   computed: {
+      findCompleteTickers() {
+         if (!this.coins) return;
+         const arr: string[] = [];
+         for (let key in this.coins) {
+            if (arr.length === 4) break;
+            const fullName = this.coins[key].FullName.toLowerCase();
+            if (
+               fullName.includes(this.ticker.toLowerCase()) &&
+               this.validateTicker(key)
+            ) {
+               arr.push(key);
+            }
+         }
+         return arr;
+      },
+      startIndex() {
+         return (this.page - 1) * 5;
+      },
+      endIndex() {
+         return this.page * 5;
+      },
+      hasNextPage() {
+         return this.filteredTickers.length > this.endIndex;
+      },
+      filteredTickers() {
+         const filteredTickers = this.tickers.filter((t) =>
+            t.name.toLowerCase().includes(this.filter.toLowerCase()),
+         );
+         return filteredTickers.slice(this.startIndex, this.endIndex);
+      },
    },
    watch: {
       filter() {
@@ -31,6 +62,28 @@ export default {
             `${window.location.pathname}?filter=${this.filter}&page=${this.page}`,
          );
       },
+   },
+   async beforeMount() {
+      const response = await this.fetchCoins();
+      this.coins = response.Data;
+   },
+   created() {
+      const windowData = Object.fromEntries(
+         new URL(window.location.href).searchParams.entries(),
+      );
+      if (windowData.page) {
+         this.page = +windowData.page;
+      }
+      if (windowData.filter) {
+         this.filter = windowData.filter;
+      }
+
+      const data = localStorage.getItem("cryptonomicon-list");
+      if (data) {
+         const tickers: TickerType[] = JSON.parse(data);
+         this.tickers = tickers;
+         this.tickers.forEach((t) => this.subscribeToUpdateTicker(t.name));
+      }
    },
    methods: {
       subscribeToUpdateTicker(tickerName: string) {
@@ -85,6 +138,9 @@ export default {
       normalizeGraph() {
          const maxValue = Math.max(...this.graph);
          const minValue = Math.min(...this.graph);
+         if (maxValue === minValue) {
+            return this.graph.map(() => 20);
+         }
          return this.graph.map(
             (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
          );
@@ -112,75 +168,26 @@ export default {
          }
          return validate;
       },
-      filteredTickers() {
-         const start = (this.page - 1) * 5;
-         const end = this.page * 5;
-         const filteredTickers = this.tickers.filter((t) =>
-            t.name.toLowerCase().includes(this.filter.toLowerCase()),
-         );
-         this.hasNextPage = filteredTickers.length > end;
-         return filteredTickers.slice(start, end);
-      },
-   },
-   async beforeMount() {
-      const response = await this.fetchCoins();
-      this.coins = response.Data;
-   },
-   created() {
-      const windowData = Object.fromEntries(
-         new URL(window.location.href).searchParams.entries(),
-      );
-      if (windowData.page) {
-         this.page = +windowData.page;
-      }
-      if (windowData.filter) {
-         this.filter = windowData.filter;
-      }
-
-      const data = localStorage.getItem("cryptonomicon-list");
-      if (data) {
-         const tickers: TickerType[] = JSON.parse(data);
-         this.tickers = tickers;
-         this.tickers.forEach((t) => this.subscribeToUpdateTicker(t.name));
-      }
-   },
-   computed: {
-      findCompleteTickers() {
-         if (!this.coins) return;
-         const arr: string[] = [];
-         for (let key in this.coins) {
-            if (arr.length === 4) break;
-            const fullName = this.coins[key].FullName.toLowerCase();
-            if (
-               fullName.includes(this.ticker.toLowerCase()) &&
-               this.validateTicker(key)
-            ) {
-               arr.push(key);
-            }
-         }
-         return arr;
-      },
    },
 };
 </script>
-
 <template>
    <div class="px-8 py-4">
       <!-- TICKER INPUT -->
       <div class="w-82 mb-6">
          <form
-            @submit.prevent="addTicker(ticker)"
             class="flex flex-col items-start"
+            @submit.prevent="addTicker(ticker)"
          >
             <label for="ticker-input">Тикер</label>
             <div class="w-64">
                <input
-                  v-model="ticker"
-                  @input="validateErr = false"
                   id="ticker-input"
+                  v-model="ticker"
                   type="text"
                   placeholder="Например DOGE"
                   class="mb-2 mt-3 w-full rounded-md border-[1px] px-2 py-2 shadow-xl focus:border-2 focus:border-black focus:border-opacity-100 focus:outline-none"
+                  @input="validateErr = false"
                />
                <div
                   v-if="ticker.length"
@@ -188,9 +195,9 @@ export default {
                >
                   <div
                      v-for="h of findCompleteTickers"
-                     @click="addTicker(h)"
                      :key="h"
                      class="flex w-full justify-center rounded-full bg-gray-400 px-1 py-1 text-sm text-white hover:cursor-pointer"
+                     @click="addTicker(h)"
                   >
                      <p class="overflow-hidden">
                         {{ h }}
@@ -221,8 +228,8 @@ export default {
             <div class="mt-3 flex items-center">
                <button
                   v-if="page > 1"
-                  @click="page = page - 1"
                   class="rounded-full bg-gray-400 px-3 py-1 text-white transition-colors hover:bg-gray-500"
+                  @click="page = page - 1"
                >
                   Назад
                </button>
@@ -232,8 +239,8 @@ export default {
                >
                <button
                   v-if="hasNextPage"
-                  @click="page = page + 1"
                   class="rounded-full bg-gray-400 px-3 py-1 text-white transition-colors hover:bg-gray-500"
+                  @click="page = page + 1"
                >
                   Вперед
                </button>
@@ -243,17 +250,17 @@ export default {
          <!-- COINS -->
          <div class="mb-4 mt-4 grid grid-cols-1 gap-2 sm:grid-cols-5">
             <div
-               v-for="(t, idx) in filteredTickers()"
+               v-for="(t, idx) in filteredTickers"
                :key="idx"
-               @click="select(t)"
                :class="{ 'border-4': t === sel }"
                class="flex flex-col items-center rounded-md border-purple-800 p-4 hover:cursor-pointer"
+               @click="select(t)"
             >
                <p class="text-gray-400">{{ t.name }} - USD</p>
                <h3 class="mb-4 mt-2 text-xl">{{ t.price }}</h3>
                <button
-                  @click.stop="() => handlerDelete(t)"
                   class="flex justify-center rounded-lg px-4 py-2 transition-colors hover:bg-gray-200"
+                  @click.stop="() => handlerDelete(t)"
                >
                   <img src="assets/delete-icon.png" class="w-5" alt="" />
                   <p>Удалить</p>
@@ -273,15 +280,15 @@ export default {
                   >
                      <div
                         v-for="(bar, idx) in normalizeGraph()"
-                        :style="{ height: `${bar}%` }"
                         :key="idx"
+                        :style="{ height: `${bar}%` }"
                         class="w-10 border bg-purple-800"
                      ></div>
                   </div>
                   <button
-                     @click="sel = null"
                      type="button"
                      class="absolute right-0 top-0"
+                     @click="sel = null"
                   >
                      <svg
                         xmlns="http://www.w3.org/2000/svg"
