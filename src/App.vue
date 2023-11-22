@@ -43,7 +43,20 @@ export default {
          const filteredTickers = this.tickers.filter((t) =>
             t.name.toLowerCase().includes(this.filter.toLowerCase()),
          );
-         return filteredTickers.slice(this.startIndex, this.endIndex);
+         return filteredTickers;
+      },
+      paginatedTickers() {
+         return this.filteredTickers.slice(this.startIndex, this.endIndex);
+      },
+      normalizedGraph() {
+         const maxValue = Math.max(...this.graph);
+         const minValue = Math.min(...this.graph);
+         if (maxValue === minValue) {
+            return this.graph.map(() => 50);
+         }
+         return this.graph.map(
+            (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
+         );
       },
    },
    watch: {
@@ -133,16 +146,6 @@ export default {
          localStorage.setItem(
             "cryptonomicon-list",
             JSON.stringify(this.tickers),
-         );
-      },
-      normalizeGraph() {
-         const maxValue = Math.max(...this.graph);
-         const minValue = Math.min(...this.graph);
-         if (maxValue === minValue) {
-            return this.graph.map(() => 20);
-         }
-         return this.graph.map(
-            (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
          );
       },
       select(t: TickerType) {
@@ -250,7 +253,7 @@ export default {
          <!-- COINS -->
          <div class="mb-4 mt-4 grid grid-cols-1 gap-2 sm:grid-cols-5">
             <div
-               v-for="(t, idx) in filteredTickers"
+               v-for="(t, idx) in paginatedTickers"
                :key="idx"
                :class="{ 'border-4': t === sel }"
                class="flex flex-col items-center rounded-md border-purple-800 p-4 hover:cursor-pointer"
@@ -279,7 +282,7 @@ export default {
                      class="flex h-64 items-end border-b border-l border-gray-600"
                   >
                      <div
-                        v-for="(bar, idx) in normalizeGraph()"
+                        v-for="(bar, idx) in normalizedGraph"
                         :key="idx"
                         :style="{ height: `${bar}%` }"
                         class="w-10 border bg-purple-800"
