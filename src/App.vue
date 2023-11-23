@@ -1,7 +1,7 @@
 <script lang="ts">
 import { FetchCoinApiResponse } from "./types/fetchCoinResponse.type";
 import { TickerType } from "./types/ticker.type";
-import { loadTickers } from "./api/api";
+import { subscribeToTicker } from "./api/api";
 
 export default {
    data() {
@@ -112,27 +112,20 @@ export default {
       if (data) {
          const tickersFromStorage: TickerType[] = JSON.parse(data);
          this.tickers = tickersFromStorage;
+         this.tickers.forEach(t =>
+            subscribeToTicker(t.name, value =>
+               this.updateTicker(t.name, value),
+            ),
+         );
       }
-      setInterval(() => this.updateTickers(), 4000);
    },
    methods: {
       formatPrice(price: number | string) {
          if (typeof price === "string") return price;
          return price > 1 ? price.toFixed(2) : price.toPrecision(2);
       },
-      async updateTickers() {
-         if (this.tickers.length === 0) return;
-
-         const exchangeData = await loadTickers(this.tickers.map(t => t.name));
-         this.tickers.forEach(ticker => {
-            const price = exchangeData[ticker.name.toUpperCase()];
-            ticker.price = price;
-         });
-         /* const price =
-            exchangeData.USD > 1
-               ? exchangeData.USD.toFixed(2)
-               : exchangeData.USD.toPrecision(2);
-         findTicker.price = price; */
+      updateTicker(tickerName: string, price: number) {
+         this.tickers.find(t => t.name === tickerName)!.price = price;
       },
       addTicker(tickerName: string) {
          if (tickerName) {
@@ -146,6 +139,9 @@ export default {
             };
 
             this.tickers = [...this.tickers, currentTicker];
+            subscribeToTicker(currentTicker.name, price =>
+               this.updateTicker(currentTicker.name, price),
+            );
 
             this.ticker = "";
             this.filter = "";
