@@ -31,12 +31,8 @@ export const subscribeToTicker = (ticker: string, cb: ICallback) => {
    tickersHandlers.set(ticker, [...subscribers, cb]);
 };
 
-export const unsubscribeFromTicker = (ticker: string, cb: ICallback) => {
-   const subscribers = tickersHandlers.get(ticker) || [];
-   tickersHandlers.set(
-      ticker,
-      subscribers.filter(func => func !== cb),
-   );
+export const unsubscribeFromTicker = (ticker: string) => {
+   tickersHandlers.delete(ticker);
 };
 
 setInterval(loadTickers, 3000);

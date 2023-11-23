@@ -1,7 +1,7 @@
 <script lang="ts">
 import { FetchCoinApiResponse } from "./types/fetchCoinResponse.type";
 import { TickerType } from "./types/ticker.type";
-import { subscribeToTicker } from "./api/api";
+import { subscribeToTicker, unsubscribeFromTicker } from "./api/api";
 
 export default {
    data() {
@@ -150,6 +150,7 @@ export default {
       handlerDelete(tickerToRemove: TickerType) {
          this.tickers = this.tickers.filter(t => t !== tickerToRemove);
          if (this.selectedTicker === tickerToRemove) this.selectedTicker = null;
+         unsubscribeFromTicker(tickerToRemove.name);
       },
       select(t: TickerType) {
          this.selectedTicker = t;
