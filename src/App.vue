@@ -1,6 +1,8 @@
 <script lang="ts">
 import { FetchCoinApiResponse } from "./types/fetchCoinResponse.type";
 import { TickerType } from "./types/ticker.type";
+import { loadTickers } from "./api/api";
+
 export default {
    data() {
       return {
@@ -40,7 +42,7 @@ export default {
          return this.filteredTickers.length > this.endIndex;
       },
       filteredTickers() {
-         const filteredTickers = this.tickers.filter((t) =>
+         const filteredTickers = this.tickers.filter(t =>
             t.name.toLowerCase().includes(this.filter.toLowerCase()),
          );
          return filteredTickers;
@@ -55,7 +57,7 @@ export default {
             return this.graph.map(() => 50);
          }
          return this.graph.map(
-            (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue),
+            price => 5 + ((price - minValue) * 95) / (maxValue - minValue),
          );
       },
       pageStateOptions() {
@@ -108,28 +110,36 @@ export default {
 
       const data = localStorage.getItem("cryptonomicon-list");
       if (data) {
-         const tickers: TickerType[] = JSON.parse(data);
-         this.tickers = tickers;
-         this.tickers.forEach((t) => this.subscribeToUpdateTicker(t.name));
+         const tickersFromStorage: TickerType[] = JSON.parse(data);
+         this.tickers = tickersFromStorage;
       }
+      setInterval(() => this.updateTickers(), 4000);
    },
    methods: {
-      subscribeToUpdateTicker(tickerName: string) {
-         const apiKey = import.meta.env.VITE_API_KEY;
-         setInterval(async () => {
-            const f = await fetch(
-               `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=${apiKey}`,
-            );
-            const data = await f.json();
-            const findTicker = this.tickers.find((t) => t.name === tickerName)!;
-            const price =
-               data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-            findTicker.price = price;
+      formatPrice(price: number | string) {
+         if (typeof price === "string") return price;
+         return price > 1 ? price.toFixed(2) : price.toPrecision(2);
+      },
+      async updateTickers() {
+         if (this.tickers.length === 0) return;
 
-            if (this.selectedTicker?.name === tickerName) {
-               this.graph.push(data.USD);
+         const exchangeData = await loadTickers(this.tickers.map(t => t.name));
+         this.tickers.forEach(ticker => {
+            const price = exchangeData[ticker.name.toUpperCase()];
+
+            if (!price) {
+               ticker.price = "-";
+               return;
             }
-         }, 3000);
+
+            const normalizedPrice = 1 / price;
+            ticker.price = normalizedPrice;
+         });
+         /* const price =
+            exchangeData.USD > 1
+               ? exchangeData.USD.toFixed(2)
+               : exchangeData.USD.toPrecision(2);
+         findTicker.price = price; */
       },
       addTicker(tickerName: string) {
          if (tickerName) {
@@ -143,14 +153,13 @@ export default {
             };
 
             this.tickers = [...this.tickers, currentTicker];
-            this.subscribeToUpdateTicker(currentTicker.name);
 
             this.ticker = "";
             this.filter = "";
          }
       },
       handlerDelete(tickerToRemove: TickerType) {
-         this.tickers = this.tickers.filter((t) => t !== tickerToRemove);
+         this.tickers = this.tickers.filter(t => t !== tickerToRemove);
          if (this.selectedTicker === tickerToRemove) this.selectedTicker = null;
       },
       select(t: TickerType) {
@@ -264,7 +273,7 @@ export default {
                @click="select(t)"
             >
                <p class="text-gray-400">{{ t.name }} - USD</p>
-               <h3 class="mb-4 mt-2 text-xl">{{ t.price }}</h3>
+               <h3 class="mb-4 mt-2 text-xl">{{ formatPrice(t.price) }}</h3>
                <button
                   class="flex justify-center rounded-lg px-4 py-2 transition-colors hover:bg-gray-200"
                   @click.stop="() => handlerDelete(t)"

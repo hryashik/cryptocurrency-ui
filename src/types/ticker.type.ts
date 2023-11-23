@@ -1,4 +1,4 @@
 export type TickerType = {
    name: string;
-   price: string;
+   price: number | string;
 };
