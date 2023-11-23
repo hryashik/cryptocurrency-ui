@@ -101,12 +101,15 @@ export default {
       const windowData = Object.fromEntries(
          new URL(window.location.href).searchParams.entries(),
       );
-      if (windowData.page) {
-         this.page = +windowData.page;
-      }
-      if (windowData.filter) {
-         this.filter = windowData.filter;
-      }
+
+      const VALID_KEYS = ["page", "filter"];
+
+      VALID_KEYS.forEach(key => {
+         if (windowData[key]) {
+            //@ts-ignore
+            this[key] = windowData[key];
+         }
+      });
 
       const data = localStorage.getItem("cryptonomicon-list");
       if (data) {
@@ -125,7 +128,11 @@ export default {
          return price > 1 ? price.toFixed(2) : price.toPrecision(2);
       },
       updateTicker(tickerName: string, price: number) {
-         this.tickers.find(t => t.name === tickerName)!.price = price;
+         const findTicker = this.tickers.find(t => t.name === tickerName)!;
+         findTicker.price = price;
+         if (findTicker === this.selectedTicker) {
+            this.graph.push(price);
+         }
       },
       addTicker(tickerName: string) {
          if (tickerName) {
