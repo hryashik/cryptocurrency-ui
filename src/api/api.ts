@@ -9,5 +9,6 @@ export const loadTickers = async (tickers: string[]) => {
       )}&api_key=${API_KEY}`,
    );
    const data: UpdateTickerResponseType = await response.json();
-   return data;
+   const tempArr = Object.entries(data).map(([key, value]) => [key, 1 / value]);
+   return Object.fromEntries(tempArr);
 };

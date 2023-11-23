@@ -126,14 +126,7 @@ export default {
          const exchangeData = await loadTickers(this.tickers.map(t => t.name));
          this.tickers.forEach(ticker => {
             const price = exchangeData[ticker.name.toUpperCase()];
-
-            if (!price) {
-               ticker.price = "-";
-               return;
-            }
-
-            const normalizedPrice = 1 / price;
-            ticker.price = normalizedPrice;
+            ticker.price = price;
          });
          /* const price =
             exchangeData.USD > 1
