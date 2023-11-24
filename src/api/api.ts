@@ -1,3 +1,4 @@
+import { TickerType } from "../types/ticker.type";
 import { WSDataMessageType } from "../types/websocketDataMessage";
 
 const AGGREGATE_INDEX = "5";
@@ -7,9 +8,10 @@ interface ICallback {
 }
 
 interface IBCData {
-   type: "update" | "add";
+   type: "update" | "add" | "remove";
    currency: string;
    price?: number;
+   mainThread: boolean;
 }
 
 export const stateApi: any = {
@@ -27,6 +29,35 @@ const bc = new BroadcastChannel("test");
 const socket = new WebSocket(`wss://streamer.cryptocompare.com/v2
 ?api_key=${API_KEY}`);
 
+let addTickerCB = (name: string) => {};
+let removeTickerCB = (name: string) => {};
+
+export function addTickerMutation(cb: (val: string) => void) {
+   addTickerCB = cb;
+}
+export function removeTickerMutation(cb: (val: string) => void) {
+   removeTickerCB = cb;
+}
+export function subscribeToMutations(tickers: TickerType[]) {
+   setTimeout(() => {
+      tickers.push({ name: "AZAZA", price: 239 });
+   }, 3000);
+}
+
+bc.onmessage = ev => {
+   const data: IBCData = ev.data;
+   const { currency, type, mainThread, price } = data;
+   if (type === "update" && price && mainThread) {
+      tickersHandlers.get(currency)?.forEach(cb => cb(price));
+   }
+   if (type === "add" && !tickersHandlers.get(currency)) {
+      addTickerCB(currency);
+   }
+   if (type === "remove" && tickersHandlers.get(currency)) {
+      removeTickerCB(currency);
+   }
+};
+
 socket.onmessage = e => {
    const {
       TYPE: type,
@@ -36,15 +67,6 @@ socket.onmessage = e => {
 
    if (type === "429") {
       socket.close();
-      bc.onmessage = ev => {
-         const { currency, price, type }: IBCData = ev.data;
-         if (type === "update" && price) {
-            tickersHandlers.get(currency)?.forEach(cb => cb(price));
-         }
-         if (type === "add") {
-            stateApi.addTicker(currency);
-         }
-      };
       return;
    }
 
@@ -55,8 +77,23 @@ socket.onmessage = e => {
    tickersHandlers.get(currency)?.forEach(cb => cb(price));
    sendToBroadcastChannel({ currency, price, type: "update" });
 };
-function sendToBroadcastChannel(data: IBCData) {
-   bc.postMessage(data);
+
+function sendToBroadcastChannel({
+   currency,
+   type,
+   price,
+}: {
+   currency: string;
+   type: "update" | "add" | "remove";
+   price?: number;
+}) {
+   const message: IBCData = {
+      mainThread: socket.readyState === 1,
+      currency,
+      type,
+      price,
+   };
+   bc.postMessage(message);
 }
 
 function sendToWebSocket(message: any) {
@@ -95,7 +132,6 @@ export const subscribeToTicker = (ticker: string, cb: ICallback) => {
 export const unsubscribeFromTicker = (ticker: string) => {
    tickersHandlers.delete(ticker);
    unsubscribeFromTickerOnWS(ticker);
-};
 
-//@ts-ignore
-window.tickers = tickersHandlers;
+   sendToBroadcastChannel({ currency: ticker, type: "remove" });
+};

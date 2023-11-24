@@ -1,7 +1,12 @@
 <script lang="ts">
 import { FetchCoinApiResponse } from "./types/fetchCoinResponse.type";
 import { TickerType } from "./types/ticker.type";
-import { subscribeToTicker, unsubscribeFromTicker, stateApi } from "./api/api";
+import {
+   subscribeToTicker,
+   unsubscribeFromTicker,
+   addTickerMutation,
+   removeTickerMutation,
+} from "./api/api";
 
 export default {
    data() {
@@ -121,7 +126,12 @@ export default {
             ),
          );
       }
-      stateApi.listenAddTicker(this.addTicker);
+
+      // API HOOKS
+      addTickerMutation(this.addTicker);
+      removeTickerMutation(tickerName => {
+         this.tickers = this.tickers.filter(t => t.name !== tickerName);
+      });
    },
    methods: {
       formatPrice(price: number | string) {
