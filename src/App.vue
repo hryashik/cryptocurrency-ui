@@ -1,7 +1,7 @@
 <script lang="ts">
 import { FetchCoinApiResponse } from "./types/fetchCoinResponse.type";
 import { TickerType } from "./types/ticker.type";
-import { subscribeToTicker, unsubscribeFromTicker } from "./api/api";
+import { subscribeToTicker, unsubscribeFromTicker, stateApi } from "./api/api";
 
 export default {
    data() {
@@ -121,6 +121,7 @@ export default {
             ),
          );
       }
+      stateApi.listenAddTicker(this.addTicker);
    },
    methods: {
       formatPrice(price: number | string) {
