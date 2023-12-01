@@ -135,6 +135,7 @@ export default {
    },
    methods: {
       formatPrice(price: number | string) {
+         if (!price) return "-";
          if (typeof price === "string") return price;
          return price > 1 ? price.toFixed(2) : price.toPrecision(2);
       },
@@ -191,6 +192,15 @@ export default {
             }
          }
          return validate;
+      },
+      validateBG(tickerName: string) {
+         if (this.coins) {
+            if (this.coins[tickerName]) {
+               return true;
+            } else {
+               return false;
+            }
+         }
       },
    },
 };
@@ -276,7 +286,10 @@ export default {
             <div
                v-for="(t, idx) in paginatedTickers"
                :key="idx"
-               :class="{ 'border-4': t === selectedTicker }"
+               :class="{
+                  'border-4': t === selectedTicker,
+                  'bg-rose-400': !coins?.hasOwnProperty(t.name),
+               }"
                class="flex flex-col items-center rounded-md border-purple-800 p-4 hover:cursor-pointer"
                @click="select(t)"
             >
